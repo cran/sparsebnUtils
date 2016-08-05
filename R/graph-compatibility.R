@@ -53,6 +53,12 @@ to_graphNEL.network <- function(x){
 }
 
 #' @export
+to_graphNEL.bn <- function(x){
+    # to_graphNEL(to_edgeList(x))
+    bnlearn::as.graphNEL(x) # use internal bnlearn method instead for compatibility
+}
+
+#' @export
 to_graphNEL.sparsebnFit <- function(x){
     x$edges <- to_graphNEL(x$edges)
 
@@ -127,6 +133,10 @@ to_edgeList.graph <- function(x){
 # Helper function to convert a graphNEL object to an edgeList compatible list
 #
 graphNEL_to_edgeList_list <- function(gr){
+    ### A graph object may store nodes by name (vs index), if this is the case, need to switch to index-style naming convention
+    ### If this step is omitted, then when we call as.integer in the next line we will introduce NAs by coercion
+    graph::nodes(gr) <- as.character(1:graph::numNodes(gr)) # this is a bit of hack, but it works for now...
+
     ### Use inEdges to invert the parent-child relationships and coerce the indices to integers
     gr.edgeL <- lapply(graph::inEdges(gr), as.integer)
 

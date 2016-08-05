@@ -2,9 +2,13 @@
 % Please edit documentation in R/sparsebnUtils-messages.R
 \name{sparsebn-messages}
 \alias{alg_input_data_frame}
+\alias{dag_summary}
+\alias{empty_dag_summary}
+\alias{feature_not_supported}
 \alias{global_coerce_warning}
 \alias{has_missing_values}
 \alias{input_not_sparsebnData}
+\alias{invalid_class}
 \alias{invalid_pkg_specification}
 \alias{pkg_not_installed}
 \alias{sparsebn-messages}
@@ -21,6 +25,14 @@ invalid_pkg_specification()
 pkg_not_installed(pkg)
 
 global_coerce_warning(pkg)
+
+feature_not_supported(feature)
+
+invalid_class(actual, expected)
+
+dag_summary(nnode, nedge)
+
+empty_dag_summary(nnode)
 }
 \arguments{
 \item{data}{data object.}
@@ -28,6 +40,16 @@ global_coerce_warning(pkg)
 \item{count}{number of missing values.}
 
 \item{pkg}{package name.}
+
+\item{feature}{feature name.}
+
+\item{actual}{class input by user.}
+
+\item{expected}{class input expected by function.}
+
+\item{nnode}{number of nodes in a DAG.}
+
+\item{nedge}{number of edges in a DAG.}
 }
 \description{
 Warning and error messages for use in the \code{sparsebn} family

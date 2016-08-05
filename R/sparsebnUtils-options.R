@@ -1,3 +1,32 @@
+#
+#  sparsebnUtils-options.R
+#  sparsebnUtils
+#
+#  Created by Bryon Aragam (local) on 4/24/16.
+#  Copyright (c) 2014-2016 Bryon Aragam. All rights reserved.
+#
+
+#
+# PACKAGE SPARSEBNUTILS: Methods for getting and setting package options
+#
+#   CONTENTS:
+#       resetGraphPackage
+#       setGraphPackage
+#       getGraphPackage
+#       setPlotPackage
+#       getPlotPackage
+#       zero_threshold
+#       get_option
+#       set_option
+#
+
+#' @describeIn setGraphPackage Reset all data to default \code{\link{edgeList}} format and set graph package back to default \code{"sparsebn"}.
+#' @export
+resetGraphPackage <- function(coerce = TRUE){
+    setGraphPackage(NULL, coerce = coerce)
+}
+
+
 #' Change data structure for representing graphs internally
 #'
 #' Changes the output of the main algorithms to be compatible with other packages in the R ecosystem.
@@ -8,7 +37,7 @@
 #' \link[network]{network-package}). \link{edgeList} is provided by default in \code{sparsebn}, however,
 #' the other three options require that extra packages are installed.
 #'
-#' @param pkg The desired package; default value is \code{NULL} corresponding to \link{edgeList}.
+#' @param pkg The desired package; default value is \code{NULL} corresponding to \link{edgeList}. Possible values are \code{"sparsebn"}, \code{"igraph"}, \code{"graph"}, \code{"bnlearn"}, and \code{"network"}.
 #' @param matchPlot Force the underlying plotting mechanism to match the selected package (see \link{setPlotPackage}).
 #' @param coerce If \code{TRUE}, then all of the fitted objects in the global environment will be coerced to be compatible with the selected package. This will overwrite your existing data.
 #'
@@ -19,12 +48,21 @@ setGraphPackage <- function(pkg,
                             matchPlot = TRUE,
                             coerce = FALSE){
     if(!is.null(pkg)){
+        ### Check that input is currently supported
+        pkg <- match.arg(pkg, c("sparsebn", "igraph", "graph", "network"))
+
+        ### Check that required package is installed
         if (!requireNamespace(pkg, quietly = TRUE)) {
             stop(pkg_not_installed(pkg = pkg), call. = FALSE)
         }
 
         ### Set plot package to match graph package by default
-        if(matchPlot) setPlotPackage(pkg = pkg)
+        if(matchPlot){
+            if(pkg == "sparsebn"){
+                stop("Cannot set matchPlot = TRUE with pkg = 'sparsebn'! For plotting, you must use one of 'igraph', 'graph', or 'network'.")
+            }
+            setPlotPackage(pkg = pkg)
+        }
     }
 
     ### Must change option BEFORE attempting coercion (see pkg_change_global_coerce)
@@ -59,7 +97,9 @@ getGraphPackage <- function(){
 #'
 #' @export
 setPlotPackage <- function(pkg){
-    ### Need to add checks for packages
+    ### Check that input is currently supported
+    pkg <- match.arg(pkg, c("igraph", "graph", "network"))
+
     set_option("sparsebn.plotting", pkg)
 }
 

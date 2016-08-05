@@ -64,6 +64,23 @@ edgeList.list <- function(x){
         stop("Input must have at least one component!")
     }
 
+    ### Don't allow NULL components: Empty parent sets should be integer(0)
+    if(check_null(x)){
+        stop("Input cannot have any NULL values! An empty parent set should be indicated by 'integer(0)', not NULL.")
+    }
+
+    ### Don't allow missing values
+    if(check_na(x)){
+        stop("Input cannot have missing values! An empty parent set should be indicated by 'integer(0)', not NA")
+    }
+
+    ### Must only contain numbers
+    if(!check_list_numeric(x)){
+        stop("Invalid input detected: List should contain only integer / numeric vectors with no missing or NULL values.")
+    } else{
+        x <- lapply(x, as.integer) # convert all entries to integer for consistency
+    }
+
     ### Cannot assign a parent larger than total number of nodes, or < 1
     max.node.index <- suppressWarnings(max(unlist(x))) # Ignore warning if graph is empty
     min.node.index <- suppressWarnings(min(unlist(x))) #
@@ -77,34 +94,40 @@ edgeList.list <- function(x){
 
 #' @method print edgeList
 #' @export
-print.edgeList <- function(x, ...){
-    if(num.edges(x) == 0){
-        edgeL.out <- paste0("<Empty graph on ", num.nodes(x), " nodes.>")
-    } else{
-        ### Assumes the DAG has at most 1000 nodes: Output will be cramped and illegible if the graph is larger than this
-        ### We shouldn't be printing this when pp > 1000 anyway!
-        edgeL.out <- mapply(function(x, y){
-            prefix <- paste0("[", x, "]")
-            prefix <- sprintf("%-5s", prefix)
-            paste0(prefix, paste(sprintf("%4d", sort(y)), collapse = ""))
-        }, 1L:length(x), x)
-        edgeL.out <- unlist(edgeL.out)
-        edgeL.out <- paste(edgeL.out, collapse = " \n")
-    }
+print.edgeList <- function(x, maxsize = 20, ...){
+    edgeL.out <- .str_edgeList(x, maxsize = maxsize)
 
     cat("edgeList object\n", edgeL.out, "\n", sep = "")
-}
+} # END PRINT.EDGELIST
+
+### Internal method to return (as a string) the screen output of an edgeList
+### Mainly useful for allow print.sparsebnFit to print out node names instead of numbers
+.str_edgeList <- function(x, maxsize, ...){
+    ### Can't use num.nodes or num.edges since x may not be an edgeList
+    num_nodes_x <- length(x)
+    num_edges_x <- sum(sapply(x, length))
+
+    if(num_edges_x == 0){
+        edgeL.out <- empty_dag_summary(length(x))
+    } else if(num_nodes_x <= maxsize){
+        edgeL.out <- format_list(as.list(x))
+    } else{
+        edgeL.out <- dag_summary(num_nodes_x, num_edges_x)
+    }
+
+    edgeL.out
+} # END .STR_EDGELIST
 
 #' @export
 as.matrix.edgeList <- function(x, ...){
     as.matrix(get.adjacency.matrix.edgeList(x))
-}
+} # END AS.MATRIX.EDGELIST
 
 #' @export
 as.list.edgeList <- function(x, ...){
     class(x) <- "list"
     x
-}
+} # END AS.LIST.EDGELIST
 
 #' @describeIn get.adjacency.matrix Convert internal \code{edgeList} representation to an adjacency matrix
 #' @export
@@ -140,10 +163,48 @@ is.zero.edgeList <- function(x){
     (num.edges(x) == 0)
 } # END IS.ZERO.EDGELIST
 
+#' Plot a fitted Bayesian network object
+#'
+#' Plots the graph object associated with the output of a learning algorithm.
+#'
+#' \code{plot.sparsebnFit} uses some default settings to make large graphs
+#' easier to interpret, but these settings can be over-ridden.
+#'
+#' @param x fitted object to plot.
+#' @param ... (optional) additional arguments to plotting mechanism.
+#'
+#' @seealso \code{\link{setPlotPackage}}, \code{\link{getPlotPackage}}
+#'
+#' @method plot edgeList
+#' @export
+plot.edgeList <- function(x, ...){
+    ### Set plotting parameters (Don't use no.readonly = TRUE! See https://stat.ethz.ch/pipermail/r-help/2007-July/136770.html)
+    par.default <- par()["mai"] # Only re-set what we change here
+    par(mai = rep(0.1,4))       # Need to reset margins (why??? graph packages seem to handle this oddly)
+
+    pkg_plot <- getPlotPackage()
+
+    if(!is.null(pkg_plot)){
+        if(pkg_plot == "graph"){
+            graph::plot(to_graphNEL(x), ...)
+        } else if(pkg_plot == "igraph"){
+            plot(to_igraph(x), ...)
+        } else if(pkg_plot == "network"){
+            plot(to_network(x), ...)
+        } else{
+            stop("Incorrect package specified. Must be one of: 'graph', 'igraph', 'network'.")
+        }
+    } else{
+        stop("No package specified for plotting! This is an internal error and should not happen -- please report this issue.")
+    }
+
+    par(par.default) # restore user's original settings
+} # END PLOT.EDGELIST
+
 #' @export
 to_edgeList.edgeList <- function(x){
     x
-}
+} # END TO_EDGELIST.EDGELIST
 
 #
 # Convert a standard two-column edge list to an edgeList compatible list
@@ -159,5 +220,4 @@ edgelist_mat_to_edgeList_list <- function(x, numnode){
     }
 
     edgeL
-}
-
+} # END EDGELIST_MAT_TO_EDGELIST_LIST

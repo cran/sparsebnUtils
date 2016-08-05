@@ -10,14 +10,24 @@
 # PACKAGE SPARSEBNUTILS: Functions
 #
 #   CONTENTS:
-#     check_if_matrix
-#     check_if_data_matrix
-#     check_if_complete_data
-#     count_nas
-#     list_classes
-#     check_list_class
-#     col_classes
-#     cor_vector
+#       check_if_matrix
+#       check_if_data_matrix
+#       check_if_complete_data
+#       check_null
+#       check_na
+#       count_nas
+#       list_classes
+#       auto_generate_levels
+#       auto_count_levels
+#       check_list_class
+#       check_list_numeric
+#       check_list_names
+#       col_classes
+#       cor_vector
+#       capitalize
+#       recode_levels
+#       convert_factor_to_discrete
+#       format_list
 #
 
 #' @name sparsebn-functions
@@ -31,6 +41,7 @@
 #' @param check.names \code{character} names to compare against.
 #' @param X a matrix.
 #' @param string a \code{character} string.
+#' @param numnode \code{integer} number of nodes.
 #'
 #' @title Utility functions
 #'
@@ -59,6 +70,20 @@ check_if_complete_data <- function(df){
     (count_nas(df) == 0)
 } # END .CHECK_IF_COMPLETE_DATA
 
+# Check if an object contains any null values
+#' @rdname sparsebn-functions
+#' @export
+check_null <- function(x){
+    any(unlist(lapply(x, is.null)))
+} # END .CHECK_NULL
+
+# Check if an object contains any missing values
+#' @rdname sparsebn-functions
+#' @export
+check_na <- function(x){
+    suppressWarnings(any(unlist(lapply(x, is.na)))) # suppress warning about checking NULLs
+} # END .CHECK_NA
+
 # Count missing values in a matrix or data.frame
 #' @rdname sparsebn-functions
 #' @export
@@ -77,16 +102,26 @@ list_classes <- function(li){
     unlist(lapply(li, class))
 } # END .LIST_CLASSES
 
-# Return the number of levels for each column in a data.frame
+# Return the different levels for each column in a data.frame, compatible
+# with the 'levels' component of sparsebnData
 #' @rdname sparsebn-functions
 #' @export
-auto_count_levels <- function(df){
+auto_generate_levels <- function(df){
     if( !check_if_data_matrix(df)){
         stop("Input must be a data.frame or a matrix!")
     }
 
     if(!is.data.frame(df)) df <- data.frame(df)
-    lapply(df, function(x) length(unique(x)))
+    out <- lapply(df, function(x) sort(unique(x)))
+
+    out
+} # END AUTO_GENERATE_LEVELS
+
+# Return the number of levels for each column in a data.frame
+#' @rdname sparsebn-functions
+#' @export
+auto_count_levels <- function(df){
+    lapply(auto_generate_levels(df), length)
 } # END .COUNT_NAS
 
 # Return TRUE if every element of a list inherits check.class, FALSE otherwise
@@ -101,6 +136,21 @@ check_list_class <- function(li, check.class){
 
     all(unlist(lapply(li, function(x) inherits(x, check.class))))
 } # END .CHECK_LIST_CLASS
+
+# Return TRUE if every element of a list inherits numeric, FALSE otherwise
+#  In particular, if every component is integer, will still return TRUE due to quirks of R
+#  This is because is.numeric(1L) returns TRUE
+#' @rdname sparsebn-functions
+#' @export
+check_list_numeric <- function(li){
+    if(length(li) == 0){
+        warning("List contains no elements!")
+
+        TRUE # default to true if empty
+    }
+
+    all(unlist(lapply(li, is.numeric)))
+} # END .CHECK_LIST_NUMERIC
 
 # Return TRUE if names(list) matches check.names, FALSE otherwise
 #' @rdname sparsebn-functions
@@ -157,3 +207,53 @@ capitalize <- function(string) {
         1, 1))
     return(string)
 } # END CAPITALIZE
+
+# Recode a factor to start at 0
+#' @rdname sparsebn-functions
+#' @export
+recode_levels <- function(x){
+    stopifnot(is.factor(x))
+    levels(x) <- seq(0, length(levels(x)) - 1, 1) # convert levels to 0...k-1
+
+    x
+}
+
+# Convert a factor to integer with levels 0...n-1
+#' @rdname sparsebn-functions
+#' @export
+convert_factor_to_discrete <- function(x){
+    f <- recode_levels(x)
+    as.numeric(levels(f))[f] # convert factor to numeric (see ?factor)
+}
+
+# Format a list for pretty printing
+format_list <- function(x){
+    stopifnot(is.list(x))
+
+    if(is.null(names(x))){
+        row_names <- 1L:length(x)
+    } else{
+        row_names <- names(x)
+    }
+
+    ### Adjust width of output based on longest string
+    row_width <- max(c(0, nchar(row_names))) + 4        # Row headers
+    row_width_str <- paste0("%-", row_width, "s")       #
+
+    cell_width <- max(c(0, nchar(unlist(x)))) + 2       # Cell contents
+    cell_width_str <- paste0("%-", cell_width, "s")     #
+
+    ### Assemble string output
+    list.out <- mapply(function(x, y){
+        prefix <- paste0("[", x, "]")
+        # prefix <- sprintf("%-5s", prefix)
+        prefix <- sprintf(row_width_str, prefix)
+        if(is.numeric(y)) y <- round(y, 2)
+        # paste0(prefix, paste(sprintf("%-5s", sort(y)), collapse = ""))
+        paste0(prefix, paste(sprintf(cell_width_str, sort(y)), collapse = ""))
+    }, row_names, x)
+    list.out <- unlist(list.out)
+    list.out <- paste(list.out, collapse = " \n")
+
+    list.out
+}

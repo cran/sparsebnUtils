@@ -24,14 +24,14 @@
 # * num.nodes.sparsebnPath
 # * num.edges.sparsebnPath
 # * num.samples.sparsebnPath
-# * lambda.grid.sparsebnPath
+# * get.lambdas.sparsebnPath
 # * get.adjacency.matrix.sparsebnPath
 #
 
 #' sparsebnPath class
 #'
-#' Convenience wrapper class for output of CCDr algorithm: Represents the entire solution path
-#' of the CCDr algorithm. Its components are of type \code{\link{sparsebnFit}}. Also inherits
+#' Convenience wrapper class for solution paths of DAG learning algorithms: This class represents an entire
+#' solution path of an algorithm. Its components are of type \code{\link{sparsebnFit}}. Also inherits
 #' from \code{\link{list}}.
 #'
 #' Each value of lambda in the (discrete) solution path corresponds to a single DAG estimate (see \href{http://jmlr.org/papers/v16/aragam15a.html}{Aragam and Zhou (2015)} for details).
@@ -42,7 +42,7 @@
 #' @param ... (optional) additional arguments.
 #'
 #' @section Methods:
-#' \code{\link{get.adjacency.matrix}}, \code{\link{lambda.grid}},
+#' \code{\link{get.adjacency.matrix}}, \code{\link{get.lambdas}},
 #' \code{\link{num.nodes}}, \code{\link{num.edges}}, \code{\link{num.samples}}
 #'
 #' @docType class
@@ -76,11 +76,11 @@ print.sparsebnPath <- function(x, verbose = FALSE, ...){
     if(verbose){
         print.default(x) # default generic reverts to list => separate calls to print.sparsebnFit for each component
     } else{
-        cat("CCDr solution path\n",
-            length(x), " estimates for lambda in [", min(lambda.grid(x)), ",", max(lambda.grid(x)), "]\n",
-            "Number of edges per solution: ", paste(num.edges(x), collapse = "-"), "\n",
-            num.nodes(x), " nodes\n",
-            num.samples(x), " observations\n",
+        cat("sparsebn Solution Path\n",
+            " ", length(x), " estimates for lambda in [", min(get.lambdas(x)), ",", max(get.lambdas(x)), "]\n",
+            " ", "Number of edges per solution: ", paste(num.edges(x), collapse = "-"), "\n",
+            " ", num.nodes(x), " nodes\n",
+            " ", num.samples(x), " observations\n",
             sep = "")
     }
 } # END PRINT.SPARSEBNPATH
@@ -112,14 +112,14 @@ num.samples.sparsebnPath <- function(x){
 
 #' Extract regularization path from solution path
 #'
-#' @describeIn lambda.grid Returns a vector of lambda values defining the solution path of a \code{\link{sparsebnPath}} object.
+#' @describeIn get.lambdas Returns a vector of lambda values defining the solution path of a \code{\link{sparsebnPath}} object.
 #' @export
-lambda.grid.sparsebnPath <- function(x){
+get.lambdas.sparsebnPath <- function(x){
     lambdas <- unlist(lapply(x, function(z){ z$lambda}))
     names(lambdas) <- NULL
 
     lambdas
-} # END LAMBDA.GRID.sparsebnPath
+} # END GET.LAMBDAS.SPARSEBNPATH
 
 #' @describeIn get.adjacency.matrix Retrieves all \code{edges} slots in the solution path, converts to an adjacency matrix, and returns as a list
 #' @export
@@ -134,13 +134,63 @@ get.adjacency.matrix.sparsebnPath <- function(x){
     sparsebnPath(as.list(x)[i])
 }
 
-#' @rdname plot.sparsebnFit
+#' Select solutions from a solution path
+#'
+#' Choose solutions from a solution path based on number of edges, value of
+#' regularization parameter lambda, or index.
+#'
+#' If there is more than one match (for example, by number of edges), then
+#' the first such estimate is returned. Note that \code{get.solution(x, index = j)}
+#' is equivalent to (but slightly slower than) \code{x[[j]]}.
+#'
+#' @param x a \code{\link{sparsebnPath}} object.
+#' @param edges number of edges to search for.
+#' @param lambda value of regularization parameter to search for.
+#' @param index integer index to select.
+#'
+#' @export
+get.solution <- function(x, edges, lambda, index){
+    stopifnot(is.sparsebnPath(x))
+
+    ### NOTE: Consider adding fuzzy matching in a future release
+
+    if(!missing(edges)){
+        if(!missing(lambda) || !missing(index)){
+            stop("'edges' cannot be specified with 'lambda' or 'index'! Select only one.")
+        }
+
+        which.idx <- which(num.edges(x) == edges)
+    } else if(!missing(lambda)){
+        if(!missing(edges) || !missing(index)){
+            stop("'lambda' cannot be specified with 'edges' or 'index'! Select only one.")
+        }
+
+        which.idx <- which(get.lambdas(x) == lambda)
+    } else if(!missing(index)){
+        if(!missing(edges) || !missing(lambda)){
+            stop("'index' cannot be specified with 'edges' or 'lambda'! Select only one.")
+        }
+
+        which.idx <- index
+    } else{
+        stop("Must specify something to select! Choose 'edges', 'lambda', or 'index'.")
+    }
+
+    if(length(which.idx) == 0){
+        NULL # return NULL if nothing found (mimics default behaviour of lists in R)
+    } else{
+        x[[min(which.idx)]] # return minimum index by default
+    }
+}
+
+#' @rdname plot.edgeList
 #' @method plot sparsebnPath
 #' @export
 plot.sparsebnPath <- function(x, ...){
-    par.default <- par()
-    par(mfrow = n2mfrow(length(x)), # Automatically choose a sensible grid to use
-        mai=rep(0,4)                   # Need to reset margins (why??? graph packages seem to handle this oddly)
+    ### Set plotting parameters (Don't use no.readonly = TRUE! See https://stat.ethz.ch/pipermail/r-help/2007-July/136770.html)
+    par.default <- par()[c("mfrow", "mai")] # Only re-set what we change here
+    par(mfrow = n2mfrow(length(x)),         # Automatically choose a sensible grid to use
+        mai = rep(0,4)                      # Need to reset margins (why??? graph packages seem to handle this oddly)
         )
 
     ### Issues when plotting null DAG, so remove it

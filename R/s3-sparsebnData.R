@@ -52,27 +52,37 @@
 #'
 #' The structure of a \code{sparsebnData} object is very simple: It contains a \code{data.frame} object,
 #' a type identifier (i.e. discrete or continuous), a list of factor levels, and a list of interventions.
-#' The 'levels' list should be the same size as the number of nodes and consist of names of the different
-#' levels for each node. The 'ivn' list should be the same size as the number of rows in the dataset,
+#' \itemize{
+#' \item The \code{levels} list should be the same size as the number of nodes and consist of names of the different
+#' levels for each node. Each level should be coded to be from 0...\eqn{k}-1 where \eqn{k} is the number of levels for a
+#' particular variable (see below for more).
+#' \item The \code{ivn} list should be the same size as the number of rows in the dataset,
 #' and each component indicates which column(s) in the dataset is (are) under intervention. If an
 #' observation has no interventions, then the corresponding component is \code{NULL}. Thus, if the data is
 #' purely observational, this list should contain only \code{NULL} values.
+#' }
+#'
+#' Presently, only levels coded as 0,1,...,\eqn{k}-1 are supported (\eqn{k} = the number of levels for a
+#' variable). Future releases are planned to support more general factor levels. The level 0 corresponds
+#' to the baseline level or measurement.
 #'
 #' Also inherits from \code{\link{list}}.
 #'
 #' @param x a \code{\link{data.frame}} or \code{\link{matrix}} object.
 #' @param type either '\code{discrete}' or '\code{continuous}'.
-#' @param levels (optional) list of level for each node.
-#' @param ivn (optional) list of interventions for each observation.
+#' @param levels (optional) \code{\link{list}} of levels for each node. If omitted, levels will be automatically
+#'        detected from \code{\link{unique}}.
+#' @param ivn (optional) \code{\link{list}} of interventions for each observation. If omitted, data is assumed to be
+#'        purely observational.
 #' @param n (optional) number of rows from data matrix to print.
 #' @param ... (optional) additional arguments.
 #'
 #' @section Slots:
 #' \describe{
-#' \item{\code{data}}{(data.frame) Dataset.}
-#' \item{\code{type}}{(character) Type of data: Either "continuous", "discrete", or "mixed".}
-#' \item{\code{levels}}{(list) List of levels for each column in \code{data}.}
-#' \item{\code{ivn}}{(list) List of columns under intervention for each row in \code{data}.}
+#' \item{\code{data}}{(\code{\link{data.frame}}) Dataset.}
+#' \item{\code{type}}{(\code{\link{character}}) Type of data: Either "continuous", "discrete", or "mixed".}
+#' \item{\code{levels}}{(\code{\link{list}}) List of levels for each column in \code{data}.}
+#' \item{\code{ivn}}{(\code{\link{list}}) List of columns under intervention for each row in \code{data}.}
 #' }
 #'
 #' @section Methods:
@@ -82,6 +92,31 @@
 #' \code{\link{count.levels}}
 #' \code{\link{count.interventions}}
 #' \code{\link{as.data.frame}}
+#'
+#' @examples
+#'
+#' \dontrun{
+#'
+#' ### Generate a random continuous dataset
+#' mat <- matrix(rnorm(1000), nrow = 20)
+#' dat <- sparsebnData(mat, type = "continuous") # purely observational data with continuous variables
+#'
+#' ### Discrete data
+#' mat <- cbind(c(0,1,1,0),
+#'              c(2,1,0,1),
+#'              c(0,0,3,0))
+#' dat.levels <- list(c(0,1), c(0,1,2), c(0,1,2,3))
+#' dat <- sparsebnData(mat,
+#'                     type = "discrete",
+#'                     levels = dat.levels) # purely observational data with discrete variables
+#'
+#' dat.ivn <- list(c(1), c(1), c(2,3), c(2,3)) # add some interventions
+#' dat <- sparsebnData(mat,
+#'                     type = "discrete",
+#'                     levels = dat.levels,
+#'                     ivn = dat.ivn) # specify intervention rows
+#'
+#' }
 #'
 #' @docType class
 #' @name sparsebnData
@@ -126,7 +161,7 @@ sparsebnData.list <- function(x, ...){
 #  Default constructor for data.frame input
 #' @rdname sparsebnData
 #' @export
-sparsebnData.data.frame <- function(x, type, levels, ivn, ...){
+sparsebnData.data.frame <- function(x, type, levels = NULL, ivn = NULL, ...){
 
     type_list <- c("continuous", "discrete")
 
@@ -147,7 +182,7 @@ sparsebnData.data.frame <- function(x, type, levels, ivn, ...){
     # If the user fails to specify a list of interventions, ASSUME all rows are observational. If the data
     #  is experimental, the user needs to specify this by passing in 'ivn' (see also sparsebnData.list).
     #
-    if(missing(ivn)){
+    if(is.null(ivn)){
         message("A list of interventions was not specified: Assuming data is purely observational.")
         ivn <- vector("list", length = nrow(x))
     }
@@ -155,12 +190,12 @@ sparsebnData.data.frame <- function(x, type, levels, ivn, ...){
     #
     # If the user fails to specify a list of levels, attempt to infer them automatically.
     #
-    if(missing(levels)){
+    if(is.null(levels)){
         # message("A list of levels was not specified: Assuming data is continuous.")
         if(type == "continuous"){
             levels <- NULL
         } else{
-            levels <- auto_count_levels(x)
+            levels <- auto_generate_levels(x)
         }
     }
 
@@ -172,7 +207,7 @@ sparsebnData.data.frame <- function(x, type, levels, ivn, ...){
 #  Default constructor for matrix input
 #' @rdname sparsebnData
 #' @export
-sparsebnData.matrix <- function(x, type, levels, ivn, ...){
+sparsebnData.matrix <- function(x, type, levels = NULL, ivn = NULL, ...){
     sparsebnData.data.frame(as.data.frame(x), type, levels, ivn)
 } # END SPARSEBNDATA.MATRIX
 
@@ -222,7 +257,7 @@ print.sparsebnData <- function(x, n = 5L, ...){
     # print(utils::head(data$data, n = n), row.names = FALSE)
     .print_data_frame(x$data, topn = n)
 
-    cat(sprintf("\n%d total rows (%d rows omitted)\n", num.samples(x), num.samples(x) - 2*n))
+    cat(sprintf("\n%d total rows (%d rows omitted)\n", num.samples(x), max(num.samples(x) - 2*n, 0)))
     if(is.obs(x)){
         cat(sprintf("Observational data with %s observations", x$type))
     } else{
@@ -243,18 +278,70 @@ as.data.frame.sparsebnData <- function(x, ...){
     data.frame(x$data, ...)
 } # END AS.DATA.FRAME.SPARSEBNDATA
 
+### Check if discrete data corresponds to binary data or not
+is_binary <- function(x){
+    stopifnot(is.sparsebnData(x))
+    count_levels <- unique(count.levels(x))
+    length(count_levels) == 1 && count_levels == 2 # TRUE if exactly two levels per variable
+}
+
 ### Internal method for picking the correct family for fitting parameters
-pick_family.sparsebnData <- function(data){
-    if(data$type == "continuous"){
+#' @export
+pick_family.sparsebnData <- function(x){
+    if(x$type == "continuous"){
         return("gaussian")
-    } else if(data$type == "discrete"){
-        return("binomial")
+    } else if(x$type == "discrete"){
+        if(is_binary(x)){
+            return("binomial")
+            # return("multinomial")
+        } else{
+            return("multinomial")
+            # stop("Discrete data with more than 2 levels is not yet supported! Please check for future updates.")
+        }
     } else{
-        stop("'mixed' type not supported for inference yet!")
+        stop("Incompatible data found! Note that mixed data is not supported for inference yet!")
     }
 }
 
-### Borrow the print.data.table method from the 'data.table' package without needing to import the entire package
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.factor <- function(x){
+    convert_factor_to_discrete(x)
+}
+
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.numeric <- function(x){
+    convert_factor_to_discrete(factor(x, ordered = FALSE))
+}
+
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.integer <- function(x){
+    convert_factor_to_discrete(factor(x, ordered = FALSE))
+}
+
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.character <- function(x){
+    convert_factor_to_discrete(factor(x, ordered = FALSE))
+}
+
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.data.frame <- function(x){
+    apply(x, 2, coerce_discrete)
+}
+
+#' @rdname coerce_discrete
+#' @export
+coerce_discrete.sparsebnData <- function(x){
+    x$data <- coerce_discrete(x$data)
+
+    x
+}
+
+### Borrow the print.data.table method from the 'data.table' package
 ###  This is an experimental method!
 .print_data_frame <- function(x,
                               topn=5,   # (5) print the top topn and bottom topn rows with '---' inbetween
@@ -268,9 +355,9 @@ pick_family.sparsebnData <- function(data){
     topn = max(as.integer(topn),1L)
     if (nrow(x) == 0L) {
         if (length(x)==0L)
-           cat("Null data.table (0 rows and 0 cols)\n")  # See FAQ 2.5 and NEWS item in v1.8.9
+           cat("Null data.frame (0 rows and 0 cols)\n")  # See FAQ 2.5 and NEWS item in v1.8.9
         else
-           cat("Empty data.table (0 rows) of ",length(x)," col",if(length(x)>1L)"s",": ",paste(utils::head(names(x),6),collapse=","),if(ncol(x)>6)"...","\n",sep="")
+           cat("Empty data.frame (0 rows) of ",length(x)," col",if(length(x)>1L)"s",": ",paste(utils::head(names(x),6),collapse=","),if(ncol(x)>6)"...","\n",sep="")
         return()
     }
     if (topn*2<nrow(x) && (nrow(x)>nrows || !topnmiss)) {

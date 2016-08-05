@@ -11,7 +11,12 @@
 #
 #   CONTENTS:
 #       estimate.parameters
-#       fit_ols_dag
+#       choose_fit_method
+#       fit_glm_dag
+#       get_coef_matrix
+#       fit_multinom_dag
+#       gaussian_loglikelihood
+#       gaussian_profile_loglikelihood
 #
 
 ### DAG fitting --------------------------------------------------------
@@ -22,7 +27,7 @@ estimate.parameters.edgeList <- function(fit, data, ...){
 
 #' @export
 estimate.parameters.sparsebnFit <- function(fit, data, ...){
-    estimate.parameters.edgeList(fit$edges, data)
+    estimate.parameters.edgeList(to_edgeList(fit$edges), data)
 }
 
 #' @export
@@ -31,14 +36,19 @@ estimate.parameters.sparsebnPath <- function(fit, data, ...){
 }
 
 ### Choose which fitting method to use: Enforces use of OLS or logistic regression only
-###  (See fit_dag for a more general fitting function)
+###  (See fit_glm_dag for a more general fitting function)
 choose_fit_method <- function(edges, data, ...){
     family <- pick_family(data)
     if(family == "gaussian"){
-        fit_dag(edges, data$data, call = "lm.fit", ...)
+        out <- fit_glm_dag(edges, data$data, call = "lm.fit", ...)
     } else if(family == "binomial"){
-        fit_dag(edges, data$data, call = "glm.fit", family = stats::binomial(), ...)
+        out <- fit_glm_dag(edges, data$data, call = "glm.fit", family = stats::binomial(), ...)
+        out <- out$coefs
+    } else if(family == "multinomial"){
+        out <- fit_multinom_dag(edges, dat = data$data, ...)
     }
+
+    out
 }
 
 #' Inference in Bayesian networks
@@ -54,7 +64,7 @@ choose_fit_method <- function(edges, data, ...){
 #' @param ... If \code{call = "glm.fit"}, specify \code{family} here. Also allows for other parameters to \code{lm.fit} and \code{glm.fit}.
 #'
 #' @export
-fit_dag <- function(parents,
+fit_glm_dag <- function(parents,
                     dat,
                     call = "lm.fit",
                     ...
@@ -62,6 +72,9 @@ fit_dag <- function(parents,
     dat <- as.matrix(dat) ### Only works for fully observed, numeric data
 
     pp <- num.nodes(parents)
+    if(ncol(dat) != pp){
+        stop(sprintf("Incompatible graph and data! Data has %d columns but graph has %d nodes.", ncol(dat), pp))
+    }
     nn <- nrow(dat)
     coefs <- Matrix::Diagonal(pp, 0)
     vars <- numeric(pp)
@@ -94,117 +107,167 @@ fit_dag <- function(parents,
     list(coefs = coefs, vars = Matrix::Diagonal(pp, vars))
 }
 
-#' Estimating undirected graphs
+# a function to convert the coefficient vector into a list of coefficients
+get_coef_matrix <- function(coef_vec, node_name, n_levels) {
+    # a vector to index each independant varibles
+    node <- 1:length(n_levels)
+    # a vector to index each coefficient in coef_vec
+    node_index <- rep(node, (n_levels-1))
+    # if (!is.matrix(coef_vec)) {coef_vec <- matrix(coef_vec, nrow=1)}
+    # check if number of columns of coef_vec is compatible with n_levels
+    if (ncol(coef_vec)!=sum(n_levels-1)) stop("number of columns of coef_vec is not compatible with n_levels")
+    if (length(n_levels) >=2) {
+        coef_matrix <- lapply(node, function(x, node_index, coef_vec, node_name){
+            coef_sub <- coef_vec[, which(node_index==x), drop=FALSE]
+            coef_names <- colnames(coef_sub)
+            coef_names <- gsub(node_name[x], "", coef_names)
+            colnames(coef_sub) <- coef_names
+            coef_sub
+            }, node_index, coef_vec, node_name)
+    } else {
+        coef_names <- colnames(coef_vec)
+        coef_names <- gsub(node_name[1], "", coef_names)
+        colnames(coef_vec) <- coef_names
+        coef_matrix <- list(coef_vec)
+    }
+
+    return(coef_matrix)
+}
+
+#' Inference in discrete Bayesian networks
 #'
-#' Methods for inferring (i) Covariance matrices and (ii) Precision matrices,
-#' the latter of which correspond to an undirected graphical model for the underlying
-#' distribution.
+#' Given the structure of a Bayesian network, estimate the parameters
+#' using multinomial logistic regression. For each node \eqn{i}, regress
+#' \eqn{i} onto its parents set using \code{\link[nnet]{multinom}}
+#' in package \code{\link{nnet}}.
 #'
-#' See Sections 2.1 and 2.2 (equation (6)) of Aragam and Zhou (2015) for more details.
-#'
-#' @param coefs coefficients of DAG.
-#' @param vars conditional variances of DAG.
-#' @param fit fitted \code{\link{sparsebnFit}} or \code{\link{sparsebnPath}} object.
-#' @param data data as \code{\link{sparsebnData}} object.
-#' @param ... (optional) additional parameters
+#' @param parents An \code{\link{edgeList}} object.
+#' @param dat Data, a dataframe or matrix
 #'
 #' @return
-#' Covariance or precision (inverse covariance) matrix as \code{\link[Matrix]{Matrix}}.
+#' A list with with one component for each node in the graph. The
+#' \eqn{i}th entry is a list containing information on the \eqn{i}th
+#' regression, last element for the \eqn{i}th regression is the
+#' intercept coefficient (always a scalar). For each parent \eqn{j} of
+#' node \eqn{i}, there is a list consisting of the index of parent \eqn{j}
+#' and a coefficient matrix \eqn{C_{ij}} for the influence parent \eqn{j}
+#' has on node \eqn{i} (the coefficient matrix is of size
+#' \eqn{(r_i-1)\times (r_j-1)}, where \eqn{r_i} is the number of levels
+#' of ith node). Note that the \eqn{(h,k)}th entry of the coefficient
+#' matrix \eqn{C_{ij}}, is the coefficient for level \eqn{k} of parent
+#' \eqn{j} has on level \eqn{h} of node \eqn{i}.
 #'
-#' @name estimate.covariance
-#' @rdname estimate.covariance
-NULL
-
-### Covariance fitting --------------------------------------------------------
+#' @examples
+#'
+#' \dontrun{
+#' ### construct a random data set
+#' x <- c(0,1,0,1,0)
+#' y <- c(1,0,1,0,1)
+#' z <- c(0,1,2,1,0)
+#' a <- c(1,1,1,0,0)
+#' b <- c(0,0,1,1,1)
+#' dat <- data.frame(x, y, z, a, b)
+#'
+#' ### randomly construct an edgelist of a graph
+#' nnode <- ncol(dat)
+#' li <- vector("list", length = nnode)
+#' li[[1]] <- c(2L,4L)
+#' li[[2]] <- c(3L,4L,5L)
+#' li[[3]] <- integer(0)
+#' li[[4]] <- integer(0)
+#' li[[5]] <- integer(0)
+#' edgeL <- edgeList(li)
+#'
+#' ### run fit_multinom_dag
+#' fit.multinom <- fit_multinom_dag(edgeL, dat)
+#'
+#' ### interpret the output
+#' fit.multinom # a list of length 5
+#' fit.multinom[[1]] # the first variable has 2 parents,
+#'  thus the first entry has 3 slots. The last slot is the intercept coefficient.
+#'  And the first two slots each represent for a parent
+#' fit.multinom[[1]][[1]] # the first parent for the first node is "y"
+#' and the coefficient is -19.44
+#' }
+#'
 #' @export
-get.covariance.matrix <- function(coefs, vars){
-    get.covariance.Matrix(Matrix::Matrix(coefs), Matrix::Matrix(vars))
+fit_multinom_dag <- function(parents,
+                             dat
+) {
+    data <- as.data.frame(dat)
+    n_levels <- unlist(auto_count_levels(dat))
+
+    node <- ncol(data)
+    # check that the number of node and the what has been input in parents are consistent
+    if (length(parents) != ncol(data)) {stop(sprintf("Incompatible graph and data! Data has %d columns but graph has %d nodes.", ncol(dat), length(parents)))}
+
+    # factorize each observation
+    for (i in 1:node){
+        # level <- 0:(n_levels[i]-1)
+        # data[,i] <- factor(data[,i],levels=level)
+        data[,i] <- factor(data[,i])
+    }
+
+    # subtract dependent and independent variables for each regression
+    coef <- lapply(seq_len(node), function(i){integer(0)})
+    for (i in 1:node){
+        x_ind <- parents[[i]] # if inputs are only edgeList object
+        if (length(x_ind)!=0) { # do nothing if a node has no parents
+            fit <- nnet::multinom(data[, c(i, x_ind)], trace = FALSE) # Why does this work / should we do this?
+            coef_vec <- coef(fit)
+            if(!is.matrix(coef_vec)) {
+                coef_name <- names(coef_vec)
+                coef_vec <- matrix(coef_vec, nrow=1)
+                colnames(coef_vec) <- coef_name
+                }
+            temp_n_levels <- n_levels[x_ind]
+            intercept <- coef_vec[, 1, drop = FALSE]
+            coef_vec <- coef_vec[, -1, drop = FALSE]
+            node_name <- as.character(colnames(data[, x_ind]))
+            coef_seq <- get_coef_matrix(coef_vec, node_name, temp_n_levels)
+            node_index <- 1:length(x_ind)
+            # coef[[i]] <- lapply(node_index, function(x, coef_seq, x_ind){list(parent=x_ind[x], coef=coef_seq[[x]])}, coef_seq, x_ind)
+            coef[[i]] <- lapply(node_index, function(x, coef_seq, x_ind){list(parent=colnames(data)[x_ind[x]], coef=coef_seq[[x]])}, coef_seq, x_ind)
+            coef[[i]][[length(x_ind)+1]] <- list(intercept=intercept)
+        }
+    }
+    return(coef)
 }
 
-#' @export
-get.covariance.Matrix <- function(coefs, vars){
-    if(missing(vars)) stop("Must specify variance matrix!")
+gaussian_loglikelihood <- function(dat, coefs, vars){
+    # data_matrix <- as.matrix(data$data)
+    dat <- as.matrix(dat)
+    vars_vector <- Matrix::diag(vars)
+    nn <- nrow(dat)
+    pp <- ncol(dat)
 
-    cov_mat(coefs, vars)
+    ### Compute cumulant function
+    cumulant <- -0.5 * nn * sum(log(vars_vector))
+
+    ### Compute LS
+    ls <- numeric(pp)
+    for(j in seq_along(ls)){
+        res <- dat[, j] - dat %*% coefs[, j]
+        ls[j] <- (0.5 / vars_vector[j]) * sum(res^2)
+    }
+    ls <- sum(ls)
+
+    cumulant + ls
 }
 
-### Internal method, not exported
-get.covariance.list <- function(li){
-    stopifnot(check_list_names(li, c("coefs", "vars")))
-    get.covariance(li$coefs, li$vars)
-}
+gaussian_profile_loglikelihood <- function(dat, coefs){
+    # data_matrix <- as.matrix(data$data)
+    dat <- as.matrix(dat)
+    nn <- nrow(dat)
+    pp <- ncol(dat)
 
-#' @export
-estimate.covariance.sparsebnFit <- function(fit, data){
-    fitted.dag <- estimate.parameters(fit, data)
+    ### Compute log(LS)
+    pll <- numeric(pp)
+    for(j in seq_along(pll)){
+        res <- dat[, j] - dat %*% coefs[, j]
+        pll[j] <- 0.5 * nn * log(sum(res^2))
+    }
+    pll <- sum(pll)
 
-    ### Why do we need to explicitly delegate to 'Matrix' here?
-    #   Sometimes results in the following runtime error:
-    #
-    #     Error in UseMethod("get.covariance", coefs) :
-    #       no applicable method for 'get.covariance' applied to an object of class "ddiMatrix"
-    #     Calls: estimate.covariance ... estimate.covariance -> estimate.covariance.sparsebnFit -> get.covariance
-    #     Execution halted
-    # get.covariance(fitted.dag$coefs, fitted.dag$vars)
-    get.covariance.Matrix(fitted.dag$coefs, fitted.dag$vars) # Need explicit .Matrix
-
-}
-
-#' @export
-estimate.covariance.sparsebnPath <- function(fit, data){
-    lapply(fit, function(x) estimate.covariance(x, data))
-}
-
-cov_mat <- function(coefs, vars){
-    # Checks: nrow = ncol
-
-    pp <- nrow(coefs)
-    identity_mat <- Matrix::Diagonal(pp, rep(1, pp))
-    Matrix::t(Matrix::solve(identity_mat - coefs)) %*% vars %*% Matrix::solve(identity_mat - coefs)
-}
-
-### Inverse covariance fitting --------------------------------------------------------
-#' @export
-get.precision.matrix <- function(coefs, vars, ...){
-    get.precision.Matrix(Matrix::Matrix(coefs), Matrix::Matrix(vars))
-}
-
-#' @export
-get.precision.Matrix <- function(coefs, vars, ...){
-    if(missing(vars)) stop("Must specify variance matrix!")
-
-    inv_cov_mat(coefs, vars)
-}
-
-### Internal method, not exported
-get.precision.list <- function(li, ...){
-    stopifnot(check_list_names(li, c("coefs", "vars")))
-    get.precision(li$coefs, li$vars)
-}
-
-#' @export
-estimate.precision.sparsebnFit <- function(fit, data, ...){
-    fitted.dag <- estimate.parameters(fit, data)
-    ### Why do we need to explicitly delegate to 'Matrix' here?
-    #   Sometimes results in the following runtime error:
-    #
-    #     Error in UseMethod("get.precision", coefs) :
-    #       no applicable method for 'get.precision' applied to an object of class "ddiMatrix"
-    #     Calls: estimate.precision ... estimate.precision -> estimate.precision.sparsebnFit -> get.precision
-    #     Execution halted
-    # get.precision(fitted.dag$coefs, fitted.dag$vars)
-    get.precision.Matrix(fitted.dag$coefs, fitted.dag$vars)
-}
-
-#' @export
-estimate.precision.sparsebnPath <- function(fit, data, ...){
-    lapply(fit, function(x) estimate.precision.sparsebnFit(x, data, ...))
-}
-
-inv_cov_mat <- function(coefs, vars){
-    # Checks: nrow = ncol
-
-    pp <- nrow(coefs)
-    identity_mat <- Matrix::Diagonal(pp, rep(1, pp))
-    (identity_mat - coefs) %*% Matrix::solve(vars) %*% Matrix::t(identity_mat - coefs)
+    -pll ### Need to take negative output loglikelihood (vs NLL)
 }

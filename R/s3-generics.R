@@ -83,7 +83,7 @@ to_edgeList <- function(x) UseMethod("to_edgeList", x)
 #' @export
 get.adjacency.matrix <- function(x) UseMethod("get.adjacency.matrix", x)
 
-#' lambda.grid
+#' get.lambdas
 #'
 #' Extracts the lambda values from a \code{\link{sparsebnPath}} object.
 #'
@@ -93,7 +93,7 @@ get.adjacency.matrix <- function(x) UseMethod("get.adjacency.matrix", x)
 #' Vector of \code{numeric} lambda values in fitted object.
 #'
 #' @export
-lambda.grid <- function(x) UseMethod("lambda.grid", x)
+get.lambdas <- function(x) UseMethod("get.lambdas", x)
 
 #' num.nodes
 #'
@@ -148,33 +148,87 @@ is.zero <- function(x) UseMethod("is.zero", x)
 #' Given the structure of a Bayesian network, estimate the parameters (weights) using ordinary least
 #' squares (for Gaussian data) or logistic regression (for discrete data).
 #'
-#' The low-level fitting method is \code{\link{fit_dag}}.
+#' The low-level fitting methods are \code{\link{fit_glm_dag}} (for continuous data)
+#' and \code{\link{fit_multinom_dag}} (for discrete data).
 #'
 #' @param fit fitted \code{\link{sparsebnFit}} or \code{\link{sparsebnPath}} object containing the Bayesian network structure to fit.
 #' @param data Data to use for fitting.
 #' @param ... (optional) additional arguments to pass to \code{\link{lm}} or \code{\link{glm}}.
 #'
 #' @export
-estimate.parameters <- function(fit, data, ...) UseMethod("estimate.parameters", fit)
+estimate.parameters <- function(fit, data, ...){
+    stopifnot(is.sparsebnData(data))
+    UseMethod("estimate.parameters", fit)
+}
 
-#' @rdname estimate.covariance
+# #' @rdname estimate.covariance
+# #' @export
+# estimate.covariance <- function(data, ...){
+#     stopifnot(is.sparsebnData(data))
+#     if(data$type != "continuous"){
+#         stop(feature_not_supported("Covariance estimation for discrete models"))
+#     }
+#
+#     UseMethod("estimate.covariance", data)
+# }
+
+# #' @rdname estimate.covariance
+# #' @export
+# estimate.precision <- function(data, ...){
+#     stopifnot(is.sparsebnData(data))
+#     if(data$type != "continuous"){
+#         stop(feature_not_supported("Precision matrix estimation for discrete models"))
+#     }
+#
+#     UseMethod("estimate.precision", data)
+# }
+
+#' Covariance and precision matrices
+#'
+#' Methods for computing covariance and precision matrices given an estimated directed graph.
+#'
+#' For Gaussian data, the precision matrix corresponds to an undirected graphical model for the
+#' distribution. This undirected graph can be tied to the corresponding directed graphical model;
+#' see Sections 2.1 and 2.2 (equation (6)) of Aragam and Zhou (2015) for more details.
+#'
+#' @param x fitted \code{\link{sparsebnFit}} or \code{\link{sparsebnPath}} object.
+#' @param data data as \code{\link{sparsebnData}} object.
+#' @param ... (optional) additional parameters
+#'
+#' @return
+#' Covariance (or precision) matrix as \code{\link[Matrix]{Matrix}} object.
+#'
+#' @name get.covariance
 #' @export
-estimate.covariance <- function(fit, data) UseMethod("estimate.covariance", fit)
+get.covariance <- function(x, data, ...) UseMethod("get.covariance", x)
 
-#' @rdname estimate.covariance
+#' @rdname get.covariance
 #' @export
-estimate.precision <- function(fit, data) UseMethod("estimate.precision", fit)
+get.precision <- function(x, data, ...) UseMethod("get.precision", x)
 
-#' @rdname estimate.covariance
+#' @rdname sparsebn-functions
 #' @export
-get.covariance <- function(coefs, vars) UseMethod("get.covariance", coefs)
-
-#' @rdname estimate.covariance
-#' @export
-get.precision <- function(coefs, vars) UseMethod("get.precision", coefs)
-
-# Internal generics
 pick_family <- function(x) UseMethod("pick_family", x)
+
+#' Recode discrete data
+#'
+#' Recodes discrete data so that the levels correspond to \code{0...n-1}, where \code{n}
+#' is the total number of levels in a discrete factor.
+#'
+#' Assumes data is unordered. Ordered factors are not supported at this time.
+#'
+#' @param x an R object to coerce.
+#'
+#' @examples
+#' x <- 1:5
+#' coerce_discrete(x) # output: 0 1 2 3 4
+#'
+#' x <- c("high", "normal", "high", "low")
+#' coerce_discrete(x) # output: 0 2 0 1
+#'
+#' @name coerce_discrete
+#' @export
+coerce_discrete <- function(x) UseMethod("coerce_discrete", x)
 
 #' @rdname sparsebn-functions
 #' @export
@@ -184,6 +238,7 @@ reIndexC <- function(x) UseMethod("reIndexC", x)
 #' @export
 reIndexR <- function(x) UseMethod("reIndexR", x)
 
+# Internal generics --------------------------------------
 .num_edges <- function(x) UseMethod(".num_edges", x)
 # to_B <- function(x) UseMethod("to_B", x)
 

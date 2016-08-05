@@ -12,7 +12,13 @@
 #   CONTENTS:
 #       input_not_sparsebnData
 #       alg_input_data_frame
-#
+#       has_missing_values
+#       invalid_pkg_specification
+#       global_coerce_warning
+#       feature_not_supported
+#       invalid_class
+#       dag_summary
+#       empty_dag_summary
 #
 
 #' @name sparsebn-messages
@@ -25,6 +31,11 @@
 #' @param data data object.
 #' @param count number of missing values.
 #' @param pkg package name.
+#' @param feature feature name.
+#' @param actual class input by user.
+#' @param expected class input expected by function.
+#' @param nnode number of nodes in a DAG.
+#' @param nedge number of edges in a DAG.
 #'
 NULL
 
@@ -72,4 +83,32 @@ global_coerce_warning <- function(pkg){
     } else{
         sprintf("coerce set to TRUE: All fitted objects will be reverted back to using default edgeList format.")
     }
+}
+
+### Warning about feature that is not supported yet, but will be soon
+#' @rdname sparsebn-messages
+#' @export
+feature_not_supported <- function(feature){
+    sprintf("%s is not yet available, but may be supported in a future version of this package. Stay tuned!", feature)
+}
+
+### Notify user that function argument has incorrect or unexpected class
+#' @rdname sparsebn-messages
+#' @export
+invalid_class <- function(actual, expected){
+    sprintf("Invalid input! Expected <%s>, actual input was <%s>.", expected, actual)
+}
+
+### Used to summarize output of DAGs that are very big
+#' @rdname sparsebn-messages
+#' @export
+dag_summary <- function(nnode, nedge){
+    sprintf("Directed graph with %d nodes and %d edges.", nnode, nedge)
+}
+
+### Used to show output of DAG with no edges
+#' @rdname sparsebn-messages
+#' @export
+empty_dag_summary <- function(nnode){
+    sprintf("<Empty graph on %d nodes.>", nnode)
 }
