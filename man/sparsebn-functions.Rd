@@ -15,11 +15,13 @@
 \alias{col_classes}
 \alias{convert_factor_to_discrete}
 \alias{cor_vector}
+\alias{cor_vector_ivn}
 \alias{count_nas}
 \alias{default_alpha}
 \alias{default_max_iters}
 \alias{list_classes}
 \alias{pick_family}
+\alias{pmatch_numeric}
 \alias{reIndexC}
 \alias{reIndexR}
 \alias{recode_levels}
@@ -63,13 +65,17 @@ check_list_names(li, check.names)
 
 col_classes(X)
 
-cor_vector(X)
-
 capitalize(string)
 
 recode_levels(x)
 
 convert_factor_to_discrete(x)
+
+cor_vector(data)
+
+cor_vector_ivn(data, ivn)
+
+pmatch_numeric(x, table, tol = 0.1)
 
 zero_threshold()
 }
@@ -91,6 +97,14 @@ zero_threshold()
 \item{X}{a matrix.}
 
 \item{string}{a \code{character} string.}
+
+\item{data}{a \code{data.frame}.}
+
+\item{ivn}{list of interventions (see \code{\link{sparsebnData}}).}
+
+\item{table}{table of values to compare against.}
+
+\item{tol}{maximum tolerance used for matching.}
 }
 \description{
 Various utility functions for packages in the \code{sparsebn} family

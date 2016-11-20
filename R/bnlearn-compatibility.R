@@ -2,12 +2,12 @@
 #  bnlearn-compatibility.R
 #  sparsebnUtils
 #
-#  Created by Bryon Aragam (local) on 4/25/16.
+#  Created by Bryon Aragam (local) on 3/18/16.
 #  Copyright (c) 2014-2016 Bryon Aragam. All rights reserved.
 #
 
 #
-# Various utility functions for enforcing compatibility with the 'bnelarn' package.
+# Various utility functions for enforcing compatibility with the 'bnlearn' package.
 #
 
 #' Conversion to bnlearn object
@@ -76,6 +76,9 @@ to_edgeList.bn <- function(x){
 # Helper function to convert a graphNEL object to an edgeList compatible list
 #
 bn_to_edgeList_list <- function(bn){
+    ### This is a slicker version of this function that we might consider switching to in the future
+    # lapply(bn$nodes, function(x) as.integer(x$parents))
+
     bn.numnode <- bnlearn::nnodes(bn)
     bn.nedge <- bnlearn::narcs(bn)
 
