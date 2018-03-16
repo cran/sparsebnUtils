@@ -1,8 +1,8 @@
-e7f523bcb1bbbbf69252b1136c96bf2e *DESCRIPTION
+982acecae34ba06353805cdcbfae2baf *DESCRIPTION
 cd24254a08c7f0d22d22a25cd9ce2cff *NAMESPACE
-8a73af81084e235f20c01166bbd0f0bc *NEWS.md
+cac7db2b3fb73e3dd42e249f0951d9d2 *NEWS.md
 e737b1c57e56a6af99f287b641ec1f34 *R/bnlearn-compatibility.R
-9ea0bfd9064ac16b5a098b7840b1225b *R/graph-compatibility.R
+340b39076743f71354bae5881fca3dbd *R/graph-compatibility.R
 568b03364fb048f250c7bc2e6365789d *R/igraph-compatibility.R
 cdeea7b9101427cef83ed31e9e7e676d *R/network-compatibility.R
 2ede73e3f05456d21eddb238bcc6f064 *R/s3-edgeList.R
@@ -10,10 +10,10 @@ d333679a739df7fc4cabd6c69035d144 *R/s3-generics.R
 4f3437e8476e3cc5c9c2d693293ee471 *R/s3-sparse.R
 a37181f70f8b310209c2606a0fe98d15 *R/s3-sparsebnData.R
 b2cde333340c57d3025f897e0a701857 *R/s3-sparsebnFit.R
-8a6ed125603c46f205fb08b6e4d601e9 *R/s3-sparsebnPath.R
+bb54a04edda365e18428d415bb679f82 *R/s3-sparsebnPath.R
 d887a965e4f33bb0ade9ab18a515118e *R/sparsebnUtils-compatibility.R
 2c395b9fa1027445de668a043e24d5fd *R/sparsebnUtils-covariance.R
-bcd6ea7aa25bda266348aee54ce8e872 *R/sparsebnUtils-cytoscape.R
+b3367ca4e7e0f7c980caf723af1cf67c *R/sparsebnUtils-cytoscape.R
 1ff8c676cfe3a5b9934aa7fbab5c743b *R/sparsebnUtils-defaults.R
 7384bac8342d1ce710bc71eb04b48b02 *R/sparsebnUtils-functions.R
 57e0dfdab1632607c8b618f98978a9da *R/sparsebnUtils-generate.R
@@ -23,12 +23,12 @@ bcd6ea7aa25bda266348aee54ce8e872 *R/sparsebnUtils-cytoscape.R
 dffe8aced459f1aa30eb41102803988d *R/sparsebnUtils-options.R
 3fa419d91ab59736a8666c33230f6c0f *R/sparsebnUtils-prior.R
 e4990568dc00bfc4eae7355c44a52a86 *R/sparsebnUtils-selection.R
-bfb1e06d824deda363f680f52912001b *R/sparsebnUtils-show.R
+7a79e393ebb34f103f1fb06f1416148e *R/sparsebnUtils-show.R
 7e4bdb03e210a1ada8627f1f4787b7f1 *R/sparsebnUtils-utils.R
 e3d09b7f0e43339dd44f6d842762ee95 *R/sparsebnUtils.R
 97836a961732af73c7908947b5704295 *R/zzz.R
 f37c0090d1b4a8ec4de84c1a2f1a8c8c *README.md
-619509c5200a02b65370d1a391d8a40f *inst/CITATION
+11ffcc47425752529eebec994f70534d *inst/CITATION
 f7de54b2d6848c05bd665b27a15e036e *man/as.data.frame.sparsebnData.Rd
 73d06c79762d5b657a2206b8ed232d5d *man/as.edgeList.Rd
 e5131e15c0deb75f6c4d9890d12b53f0 *man/as.sparse.Rd
@@ -51,7 +51,7 @@ deaed6724afec2a5bd8d1e7862774ab3 *man/is.obs.Rd
 f7064dca5b756e5d73a19f18764fdb24 *man/num.edges.Rd
 60bcdba44b2c9078b8a853dbca057ade *man/num.nodes.Rd
 7ac66adc00d55f18d9b2a236643e2efc *man/num.samples.Rd
-3b423d68f6a17d2f1cc396ef0fe4ee5d *man/openCytoscape.Rd
+cdcebc6f9749dec92e9debc713b0c4d1 *man/openCytoscape.Rd
 f5cc56082962d5607505162da846018e *man/permute.nodes.Rd
 7d656d8a1412a991f4d99148e5fa0269 *man/plot.edgeList.Rd
 49c781583bcfbd89f601f5acec9b2e76 *man/random.dag.Rd
@@ -61,7 +61,7 @@ d02e10559522cf9baf7c9922d352b1a8 *man/select.Rd
 bbfc3ef595305ad8f582217605e949cd *man/select.parameter.Rd
 1fa6dd776950c776212567769cdfeae4 *man/setGraphPackage.Rd
 8f62766ffb271ace406563e301b02a96 *man/setPlotPackage.Rd
-e46436faf7da858dba79b7de29483a73 *man/show.parents.Rd
+c707b2ce41c5ae1ba0ce8b07bab94bf1 *man/show.parents.Rd
 fd30d7a93a5b0855f2e308a766908815 *man/sparse.Rd
 ab79cfa70abe10af5831d1c40aab2db7 *man/sparsebn-compat.Rd
 77be07a5e5f6f55255ddc588d04a92fa *man/sparsebn-functions.Rd

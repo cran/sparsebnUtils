@@ -1,7 +1,7 @@
 Package: sparsebnUtils
 Title: Utilities for Learning Sparse Bayesian Networks
-Version: 0.0.5
-Date: 2017-09-07
+Version: 0.0.6
+Date: 2018-03-16
 Authors@R: c(
     person("Bryon", "Aragam", email = "sparsebn@gmail.com", role = c("aut", "cre")),
     person("Jiaying", "Gu", role = c("aut"))
@@ -16,8 +16,8 @@ BugReports: https://github.com/itsrainingdata/sparsebnUtils/issues
 License: GPL (>= 2)
 RoxygenNote: 6.0.1
 NeedsCompilation: no
-Packaged: 2017-09-07 23:21:09 UTC; Zigmund-2
+Packaged: 2018-03-16 20:54:04 UTC; Zigmund-2
 Author: Bryon Aragam [aut, cre],
   Jiaying Gu [aut]
 Repository: CRAN
-Date/Publication: 2017-09-09 16:45:45 UTC
+Date/Publication: 2018-03-16 21:41:01 UTC
