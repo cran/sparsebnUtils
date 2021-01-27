@@ -343,7 +343,21 @@ Matrix_to_sparse <- function(x, index = "R", ...){
     pp <- nrow(x)
 
     ### If already a Matrix object, just pull out the corresponding slots
-    Tx <- as(x, "dgTMatrix") # needs to be in triplet form, see ?dgCMatrix vs ?dgTMatrix
+    #
+    # Tue Jan 12 2021: As of Matrix  1.3-0 (2020-12-15 r3351), this code breaks
+    #                   due to a bugfix in the Matrix package. The issue
+    #                   according to the Matrix maintainers is that "you call
+    #                   a function e.g.
+    #                      as(M, "dgTMatrix")  or chol()  or ..
+    #                   on such a Matrix but that method does not work, or not
+    #                   work as assumed, now that Matrix() does return a
+    #                   "ddiMatrix" when it can & unless you explicitly say
+    #                   ' doDiag=FALSE '.
+    #
+    #                   The fix to just say as(x, "TsparseMatrix") instead of
+    #                   as(x, "dgTMatrix") below.
+    #
+    Tx <- as(x, "TsparseMatrix") # needs to be in triplet form, see ?dgCMatrix vs ?dgTMatrix
     vals <- Tx@x
     rows <- Tx@i
     cols <- Tx@j

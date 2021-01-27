@@ -21,7 +21,7 @@
 #' Displays the selected graph in the Cytoscape application. Note that this
 #' requires that Cytoscape is installed on the user's system, and that the
 #' RCy3 package is installed and properly configured. Cytoscape can be
-#' downloaded at \href{http://www.cytoscape.org/}{http://www.cytoscape.org/}.
+#' downloaded at \href{https://cytoscape.org/}{https://cytoscape.org/}.
 #'
 #' @param x A \code{\link{sparsebnFit}} object or other graph object.
 #' @param title A character string, this is the name you will see on the Cytoscape

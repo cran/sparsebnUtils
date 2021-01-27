@@ -1,3 +1,7 @@
+# sparsebnUtils 0.0.8
+
+* Fixed an issue in `Matrix_to_sparse` related to a bug fix / API change in Matrix v1.3-0
+
 # sparsebnUtils 0.0.7
 
 * Maintenance release for R 3.6.0

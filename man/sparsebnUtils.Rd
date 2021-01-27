@@ -3,7 +3,6 @@
 \docType{package}
 \name{sparsebnUtils}
 \alias{sparsebnUtils}
-\alias{sparsebnUtils-package}
 \title{sparsebnUtils: Utilities for the sparsebn package.}
 \description{
 A set of tools for representing and estimating sparse Bayesian
